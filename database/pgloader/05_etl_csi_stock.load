@@ -1,0 +1,56 @@
+LOAD CSV
+     FROM ALL FILENAMES MATCHING ~<csi.+stockfactsheet.*.csv>
+     IN DIRECTORY '~/Dropbox/PicoBank/DataSets/CSIDATA/' WITH ENCODING iso-8859-1
+     HAVING FIELDS (
+         CsiNumber,
+         Symbol,
+         Name,
+         Exchange,
+         IsActive,
+         StartDate,
+         EndDate,
+         ConversionFactor,
+         SwitchCfDate,
+         PreSwitchCf,
+         SubExchange,
+         ExchangeSymbol
+     )
+     INTO postgresql://instruments@localhost:5432/picobank
+     TARGET TABLE etl.etl_csi_stock 
+     TARGET COLUMNS (
+         CsiNumber,
+         Symbol,
+         Name,
+         Exchange,
+         IsActive,
+         StartDate,
+         EndDate,
+         ConversionFactor,
+         SwitchCfDate,
+         PreSwitchCf,
+         SubExchange,
+         ExchangeSymbol
+     )
+
+     WITH truncate, 
+          skip header = 1,
+          fields optionally enclosed by '"',
+          fields escaped by double-quote,
+          fields terminated by ','
+
+     SET client_encoding to 'utf8',
+          work_mem to '12MB',
+          standard_conforming_strings to 'on'   
+
+AFTER LOAD 
+DO
+    $$ 
+    DELETE FROM instrument 
+        WHERE instrument_source_id = (SELECT id FROM instrument_source WHERE name = 'CSI/STOCK')
+        AND instrument_class_id = (SELECT id FROM instrument_class WHERE name = 'Stock')
+        AND symbol in (SELECT Symbol FROM etl.etl_csi_stock)
+    $$
+
+EXECUTE 05_etl_csi_stock.sql
+;
+

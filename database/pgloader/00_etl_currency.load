@@ -1,0 +1,69 @@
+LOAD CSV 
+    FROM '~/Dropbox/PicoBank/DataSets/Banque\ de\ France/data.csv' (name, symbol)
+    INTO postgresql://instruments@localhost:5432/picobank
+    TARGET TABLE etl.etl_currency 
+
+    WITH truncate, 
+        skip header = 1,
+        fields optionally enclosed by '"',
+        fields escaped by double-quote,
+        fields terminated by ';'
+
+    SET client_encoding to 'utf8',
+        work_mem to '12MB',
+        standard_conforming_strings to 'on'
+
+AFTER LOAD
+DO
+$$
+    ALTER SEQUENCE instrument_id_seq RESTART WITH 1000;
+$$,
+$$
+INSERT INTO instrument (
+        symbol, 
+        name, 
+        description, 
+        currency_id, 
+        instrument_class_id,
+        instrument_source_id,
+        from_date, thru_date, 
+        created_at, created_by, 
+        updated_at, updated_by
+    ) VALUES ( 
+        'EUR', 
+        'Euro', 
+        'Euro',
+        NULL,
+        1, -- Currency
+        0, -- MISC
+        '2001-01-01', '2999-01-01', 
+        current_timestamp, 'ETL', 
+        current_timestamp, 'ETL')
+$$,
+$$
+INSERT INTO instrument (
+        symbol, 
+        name, 
+        description, 
+        currency_id, 
+        instrument_class_id, 
+        instrument_source_id,
+        from_date, thru_date, 
+        created_at, created_by, 
+        updated_at, updated_by
+    ) SELECT 
+        symbol,
+        name,
+        name,
+        NULL,
+        1, -- Currency
+        0, -- MISC
+        '2001-01-01', '2999-01-01', 
+        current_timestamp, 'ETL', 
+        current_timestamp, 'ETL' 
+    FROM etl.etl_currency
+$$,
+$$
+    ALTER SEQUENCE instrument_id_seq RESTART WITH 10000;
+$$
+;

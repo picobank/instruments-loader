@@ -1,0 +1,32 @@
+LOAD CSV
+     FROM ALL FILENAMES MATCHING ~<.+Symbols-PROD.csv>
+     IN DIRECTORY '~/Dropbox/PicoBank/DataSets/BATS/Europe/'
+     HAVING FIELDS (company_name,bats_name,isin,currency,mic,reuters_exchange_code,lis_local,live,tick_type,reference_price,bats_prev_close,live_date,bloomberg_primary,bloomberg_bats,mifid_share,asset_class,matching_unit,euroccp_enabled,xclr_enabled,lchl_enabled,reuters_ric_primary,reuters_ric_bats,reference_adt_eur,csd,corporate_action_status,supported_services,trading_segment,printed_name,periodic_auction_max_duration,periodic_auction_min_order_entry_size,periodic_auction_min_order_entry_notional,max_otr_count,max_otr_volume,capped,venue_cap_percentage,venue_uncap_date)
+     INTO postgresql://instruments@localhost:5432/picobank
+     TARGET TABLE etl.etl_bats_instrument 
+     TARGET COLUMNS (
+         company_name,bats_name,isin,currency,mic,reuters_exchange_code,lis_local,live,tick_type,reference_price,bats_prev_close,live_date,bloomberg_primary,bloomberg_bats,mifid_share,asset_class,matching_unit,euroccp_enabled,xclr_enabled,lchl_enabled,reuters_ric_primary,reuters_ric_bats,reference_adt_eur,csd,corporate_action_status,supported_services,trading_segment,printed_name,periodic_auction_max_duration,periodic_auction_min_order_entry_size,periodic_auction_min_order_entry_notional,max_otr_count,max_otr_volume,capped,venue_cap_percentage,venue_uncap_date
+     )
+
+     WITH truncate, 
+          skip header = 2,
+          fields optionally enclosed by '"',
+          fields escaped by double-quote,
+          fields terminated by ','
+
+      SET client_encoding to 'utf8',
+          work_mem to '12MB',
+          standard_conforming_strings to 'on'
+
+
+AFTER LOAD 
+DO 
+    $$ 
+    DELETE FROM instrument WHERE instrument_source_id IN (
+        SELECT id FROM instrument_source WHERE name = 'BATS/EU'
+    ) 
+    $$
+
+EXECUTE 01_etl_bats_instrument.sql
+;
+

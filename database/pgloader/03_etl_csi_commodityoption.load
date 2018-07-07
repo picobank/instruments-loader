@@ -1,0 +1,56 @@
+LOAD CSV
+     FROM ALL FILENAMES MATCHING ~<csi.+commodityoptionfactsheet.*.csv>
+     IN DIRECTORY '~/Dropbox/PicoBank/DataSets/CSIDATA/'
+     HAVING FIELDS (
+         CsiNumber,
+         Symbol,
+         Name,
+         Exchange,
+         IsActive,
+         StartDate,
+         EndDate,
+         DeliveryMonths,
+         DivideStrike,
+         ConversionFactor,
+         HasImplied5Prices,
+         HasImplied5Strikes
+     )
+     INTO postgresql://instruments@localhost:5432/picobank
+     TARGET TABLE etl.etl_csi_commodityoption 
+     TARGET COLUMNS (
+         CsiNumber,
+         Symbol,
+         Name,
+         Exchange,
+         IsActive,
+         StartDate,
+         EndDate,
+         DeliveryMonths,
+         DivideStrike,
+         ConversionFactor,
+         HasImplied5Prices,
+         HasImplied5Strikes
+     )
+
+     WITH truncate, 
+          skip header = 1,
+          fields optionally enclosed by '"',
+          fields escaped by double-quote,
+          fields terminated by ','
+
+      SET client_encoding to 'utf8',
+          work_mem to '12MB',
+          standard_conforming_strings to 'on'
+
+AFTER LOAD 
+DO
+    $$ 
+    DELETE FROM instrument 
+        WHERE instrument_source_id = (SELECT id FROM instrument_source WHERE name = 'CSI/COMMODITYOPTION')
+        AND instrument_class_id = (SELECT id FROM instrument_class WHERE name = 'CommodityOption')
+        AND symbol in (SELECT Symbol FROM etl.etl_csi_stockoption)
+    $$
+
+EXECUTE 03_etl_csi_commodityoption.sql
+;
+

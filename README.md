@@ -11,3 +11,7 @@
 Reverting back to an empty schema:
 
     goose -dir database/migrations postgres "user=instruments password=raspberry host=localhost port=5432 dbname=picobank sslmode=disable search_path=etl" down-to 0
+
+## Loading data
+
+    scripts/pgloader-all.sh
